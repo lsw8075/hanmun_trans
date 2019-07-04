@@ -67,7 +67,10 @@ def crawl_article(article_id):
     req = requests.get('http://sillok.history.go.kr/id/' + article_id)
     soup = BS(req.text, 'html.parser')
     raw = soup.find_all('div', {'class': 'ins_view_pd'})
-    return (article_id, raw[0], raw[1])
+    return (article_id, str(raw[0]), str(raw[1]))
+
+def crawl_dump(filename, data):
+    pickle.dump(data, open('raw/' + filename, 'wb'), protocol=pickle.HIGHEST_PROTOCOL)
 
 def crawl_all_articles():
     mkdir('raw')
@@ -75,16 +78,19 @@ def crawl_all_articles():
     for filename in filenames:
         with open('sillok/' + filename, 'r') as f:
             print('crawling', filename)
-            lines = f.readlines()
-            total = len(lines)
-            result = []
-            count = 1
+            lines = list(dict.fromkeys(f.readlines()))
+            lines.sort()
+            current_mon = lines[0][0:9]
+            data = []
             for line in lines:
-                result.append(crawl_article(line.strip()))
-                print('crawled', count, '/', total)
-                count += 1
+                if current_mon != line[0:9]:
+                    crawl_dump(current_mon, data)
+                    print('crawled', current_mon)
+                    data.clear()
+                    current_mon = line[0:9]
+                data.append(crawl_article(line.strip()))
                 time.sleep(0.1)
-            pickle.dump(result, open('raw/' + filename, 'wb'), protocol=pickle.HIGHEST_PROTOCOL)
-
+            crawl_dump(current_mon, data)
+        
 crawl_all_articles()
 
